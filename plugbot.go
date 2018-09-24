@@ -4,11 +4,15 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"plugin"
 	"strings"
 
 	"github.com/mattjw79/plugbot/config"
 	"github.com/nlopes/slack"
 )
+
+// Plugin holds the loaded plugin handler
+type Plugin func(...interface{})
 
 // PlugBot defines the main bot structure
 type PlugBot struct {
@@ -17,6 +21,7 @@ type PlugBot struct {
 	API        *slack.Client
 	RTM        *slack.RTM
 	Info       *slack.Info
+	Plugins    map[string]Plugin
 }
 
 // ParseFlags parses the command line flags
@@ -28,6 +33,20 @@ func (p *PlugBot) ParseFlags() {
 // ParseConfig runs the config file parsing
 func (p *PlugBot) ParseConfig() error {
 	return p.Config.Parse(p.ConfigFile)
+}
+
+// Init loads prereqs and starts the Slack connection
+func (p *PlugBot) Init() error {
+	p.Plugins = make(map[string]Plugin)
+	p.ParseFlags()
+	if err := p.ParseConfig(); err != nil {
+		return err
+	}
+	p.LoadPlugins()
+	p.API = slack.New(p.Config.APIToken)
+	p.RTM = p.API.NewRTM()
+	go p.RTM.ManageConnection()
+	return nil
 }
 
 // IsRecipient determines if an incoming message event is intended for the bot
@@ -45,15 +64,31 @@ func (p *PlugBot) IsRecipient(msg *slack.MessageEvent) bool {
 	return false
 }
 
+// LoadPlugins loads the plugins defined
+func (p *PlugBot) LoadPlugins() {
+	for _, configPlugin := range p.Config.Plugins {
+		plug, err := plugin.Open(configPlugin.Path)
+		if err != nil {
+			log.Println("error loading plugin:", err)
+			continue
+		}
+
+		handler, err := plug.Lookup(configPlugin.Handler)
+		if err != nil {
+			log.Println("error loading plugin handler:", err)
+			continue
+		}
+
+		log.Printf("loaded plugin '%s'\n", configPlugin.Name)
+		p.Plugins[configPlugin.Name] = handler.(func(...interface{}))
+	}
+}
+
 func main() {
 	var plugbot PlugBot
-	plugbot.ParseFlags()
-	if err := plugbot.ParseConfig(); err != nil {
-		log.Fatal("error parsing config:", err)
+	if err := plugbot.Init(); err != nil {
+		log.Fatal("error initializing:", err)
 	}
-	plugbot.API = slack.New(plugbot.Config.APIToken)
-	plugbot.RTM = plugbot.API.NewRTM()
-	go plugbot.RTM.ManageConnection()
 
 	for msg := range plugbot.RTM.IncomingEvents {
 		switch ev := msg.Data.(type) {
