@@ -120,6 +120,20 @@ func main() {
 								plugbot.RTM.NewOutgoingMessage(eventConfig.Response, ev.Channel),
 							)
 						}
+						if eventConfig.Plugin != "" {
+							if handler, ok := plugbot.Plugins[eventConfig.Plugin]; ok {
+								handler(
+									plugbot.Config,
+									plugbot.API,
+									plugbot.RTM,
+									plugbot.Info,
+									eventConfig.Options,
+									ev,
+								)
+							} else {
+								log.Println("invalid plugin configured:", eventConfig.Plugin)
+							}
+						}
 					}
 				}
 			}

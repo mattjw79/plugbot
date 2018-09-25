@@ -2,3 +2,16 @@
 
 api_token: <slack API token here>
 bot_name: plugbot
+plugins:
+  - handler: Handler
+    name: Example
+    path: plugins/example_plugin.so
+
+events:
+  - recipient: true
+    regex: ".*hello"
+    #response: Greetings!
+    plugin: Example
+    type: message_event
+    options:
+      lookup_user: true
