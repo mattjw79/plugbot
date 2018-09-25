@@ -105,6 +105,9 @@ func main() {
 			)
 		case *slack.MessageEvent:
 			for _, eventConfig := range plugbot.Config.Events {
+				if eventConfig.Type != "message_event" {
+					continue
+				}
 				regex := eventConfig.Regex
 				if strings.Contains(regex, "<@self>") {
 					regex = strings.Replace(eventConfig.Regex, "<@self>", fmt.Sprintf("<@%s>", plugbot.Info.User.ID), -1)
