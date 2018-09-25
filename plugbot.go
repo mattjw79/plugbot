@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"plugin"
+	"regexp"
 	"strings"
 
 	"github.com/mattjw79/plugbot/config"
@@ -54,6 +55,7 @@ func (p *PlugBot) IsRecipient(msg *slack.MessageEvent) bool {
 	isPrivate := false
 	_, cErr := p.API.GetChannelInfo(msg.Channel)
 	_, gErr := p.API.GetGroupInfo(msg.Channel)
+
 	if cErr != nil && gErr != nil {
 		isPrivate = true
 	}
@@ -102,10 +104,24 @@ func main() {
 				plugbot.Info.User.ID,
 			)
 		case *slack.MessageEvent:
-			if plugbot.IsRecipient(ev) {
-				plugbot.RTM.SendMessage(
-					plugbot.RTM.NewOutgoingMessage(fmt.Sprintf("Message received: %v", ev.Text), ev.Channel),
-				)
+			for _, eventConfig := range plugbot.Config.Events {
+				regex := eventConfig.Regex
+				if strings.Contains(regex, "<@self>") {
+					regex = strings.Replace(eventConfig.Regex, "<@self>", fmt.Sprintf("<@%s>", plugbot.Info.User.ID), -1)
+				}
+				matched, err := regexp.MatchString(regex, ev.Text)
+				if err != nil {
+					log.Printf("error matching regex:\n  `%s`\n  '%s'", regex, ev.Text)
+				}
+				if matched {
+					if !eventConfig.Recipient || (eventConfig.Recipient && plugbot.IsRecipient(ev)) {
+						if eventConfig.Response != "" {
+							plugbot.RTM.SendMessage(
+								plugbot.RTM.NewOutgoingMessage(eventConfig.Response, ev.Channel),
+							)
+						}
+					}
+				}
 			}
 		case *slack.RTMError:
 			log.Printf("Error: %s\n", ev.Error())

@@ -6,6 +6,16 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// Events defines the events and how to react
+type Events struct {
+	Options   map[string]interface{} `yaml:"options,omitempty"`
+	Plugin    string                 `yaml:"plugin,omitempty"`
+	Recipient bool                   `yaml:"recipient"`
+	Regex     string                 `yaml:"regex"`
+	Response  string                 `yaml:"response,omitempty"`
+	Type      string                 `yaml:"type"`
+}
+
 // Plugin defines the configuration for plugins to be loaded
 type Plugin struct {
 	Handler string `yaml:"handler"`
@@ -17,6 +27,7 @@ type Plugin struct {
 type Config struct {
 	APIToken string   `yaml:"api_token"`
 	BotName  string   `yaml:"bot_name"`
+	Events   []Events `yaml:"events"`
 	Plugins  []Plugin `yaml:"plugins"`
 }
 
