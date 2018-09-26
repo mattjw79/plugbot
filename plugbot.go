@@ -27,7 +27,7 @@ type PlugBot struct {
 
 // ParseFlags parses the command line flags
 func (p *PlugBot) ParseFlags() {
-	flag.StringVar(&p.ConfigFile, "config", "config.yml", "Path to the config file")
+	flag.StringVar(&p.ConfigFile, "config", "config.yml", "Path to the config file (default is 'config.yml')")
 	flag.Parse()
 }
 
